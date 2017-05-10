@@ -17,7 +17,7 @@ from image_match.goldberg import ImageSignature
 log = logging.getLogger('werkzeug')
 
 ES = Elasticsearch('http://elasticsearch:9200')
-INDEX_NAME = 'kingpick'
+INDEX_NAME = 'cvtool'
 ES_DOC_TYPE = 'image_hash'
 
 
