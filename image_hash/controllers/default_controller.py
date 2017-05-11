@@ -86,7 +86,19 @@ def search(tenant_id, project_id, search_request):
     if request.is_json:
         search_request = ImageHashSearchRequest.from_dict(request.get_json())
         ses = signature_es(INDEX_NAME)
-        matches = ses.search_image(
+
+        if search_request.url.startswith('gs://'):
+            storage_client = storage.Client()
+            bucket = storage_client.get_bucket(search_request.url.split('/', 3)[2])
+            blob = bucket.blob(search_request.url.split('/', 3)[3])
+            image = blob.download_as_string()
+            matches = ses.search_image(
+                path=image,
+                all_orientations=search_request.all_orientations,
+                bytestream=True,
+                pre_filter={"term": {"metadata.parent_id": parent_id(tenant_id, project_id)}})
+        else:
+            matches = ses.search_image(
                 path=search_request.url,
                 all_orientations=search_request.all_orientations,
                 bytestream=False,
