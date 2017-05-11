@@ -14,6 +14,8 @@ from elasticsearch import Elasticsearch
 from image_match.elasticsearch_driver import SignatureES
 from image_match.goldberg import ImageSignature
 
+from google.cloud import storage
+
 log = logging.getLogger('werkzeug')
 
 ES = Elasticsearch('http://elasticsearch:9200')
@@ -48,7 +50,16 @@ def add(tenant_id, project_id, image_hash_request):
         ses = signature_es(tenant_id)
         metadata = image_hash_request.metadata if image_hash_request.metadata is not None else dict()
         metadata['parent_id'] = parent_id(tenant_id, project_id)
-        ses.add_image(image_hash_request.filepath, image_hash_request.url, bytestream=False, metadata=metadata)
+
+        if image_hash_request.url.startswith('gs://'):
+            storage_client = storage.Client()
+            bucket = storage_client.get_bucket(image_hash_request.url.split('/', 3)[2])
+            blob = bucket.blob(image_hash_request.url.split('/', 3)[3])
+            image = blob.download_as_string()
+            ses.add_image(path=image_hash_request.url, img=image, bytestream=True, metadata=metadata)
+        else:
+            ses.add_image(image_hash_request.filepath, image_hash_request.url, bytestream=False, metadata=metadata)
+
         return ImageMatchResponse.from_dict({
             'status': 'ok',
             'error': [],
